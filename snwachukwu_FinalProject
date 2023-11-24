@@ -1,0 +1,164 @@
+/*Down below is a good portion of the MySQL scripts that I produced for my Mini Final Project*/
+
+/*Mini Final Project - Database Systems*/
+/*Part 4:*/
+CREATE TABLE `smartsolutions`.`employee` (
+  `Fname` VARCHAR(20) NOT NULL,
+  `Mname` VARCHAR(1) NULL,
+  `Lname` VARCHAR(20) NOT NULL,
+  `Ssn` INT(9) NOT NULL,
+  `Sex` VARCHAR(1) NOT NULL,
+  `Salary` INT(10) NOT NULL,
+  `Address` VARCHAR(50) NOT NULL,
+  `Bdate` INT NOT NULL,
+  `Super_ssn` INT(9) NULL,
+  `Dnum` INT(2) NOT NULL,
+  PRIMARY KEY (`Ssn`));
+  
+  CREATE TABLE `smartsolutions`.`department` (
+  `Dname` VARCHAR(20) NOT NULL,
+  `Dno` INT(2) NOT NULL,
+  `Manager_ssn` INT(9) NOT NULL,
+  `Manager_startdate` INT NOT NULL,
+  `Manager_status` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (`Dno`, `Manager_ssn`, `Manager_startdate`, `Manager_status`));
+  
+  CREATE TABLE `smartsolutions`.`project` (
+  `Pname` VARCHAR(20) NOT NULL,
+  `Pno` INT(2) NOT NULL,
+  `P_Category` VARCHAR(25) NOT NULL,
+  `Dno` INT(2) NOT NULL,
+  `Plocation` VARCHAR(25) NOT NULL,
+  PRIMARY KEY (`Pno`));
+  
+  CREATE TABLE `smartsolutions`.`department_locations` (
+  `Dnum` INT(2) NOT NULL,
+  `D_location` VARCHAR(25) NOT NULL,
+  `M_ssn` INT(9) NOT NULL,
+  `M_startdate` INT NOT NULL,
+  `M_status` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (`D_location`));
+  
+  CREATE TABLE `smartsolutions`.`worked_on` (
+  `E_ssn` INT(9) NOT NULL,
+  `Pnumber` INT(2) NOT NULL,
+  `Total Hours` INT(4) NOT NULL,
+  `S_ssn` INT(9) NOT NULL,
+  PRIMARY KEY (`Total Hours`));
+  
+  /*Part 5:*/
+  /*a. Basic Selects*/
+  /*Get the names of all employees*/
+  Use smartsolutions;
+  Select Fname, Mname, Lname
+  From employee;
+  
+  /*Get employees and their information by the order of Dnum*/
+  Select *
+  From employee
+  Order by Dnum;
+
+/*Get the different first names of employees*/
+Select DISTINCT Fname
+From employee;
+
+/*Get the employees and department numbers of those who work in Dnum 4 or 5*/
+Select Fname, Mname, Lname, Dnum
+From employee
+Where Dnum = 4 or Dnum = 5;
+
+/*Get the employees' name, salary, and Dnum if they make 84000, 90000, or 103000 a year*/
+Select Fname, Mname, Lname, Salary, Dnum
+From employee
+Where Salary IN (84000, 90000, 103000);
+
+/*Get the employee and their information if their first name starts with a capital S*/
+Select *
+From employee
+Where Fname Like 'S%';
+
+/*b. Aggregate functions*/
+/*Get the department name, average salary of that department, and department number*/
+Select d.Dname, AVG(e.Salary) as 'Average salary of Department', e.Dnum
+From department d, employee e
+Where e.Dnum=d.Dno
+Group by e.Dnum;
+
+/*Get the employee name, Ssn, Salary, and department number of the person who makes the least in the company*/
+Select Fname, Mname, Lname, Ssn, Salary, Dnum
+From employee
+Where Salary = (Select Min(Salary) From employee);
+
+/*Get the employee name, Ssn, Salary, and department number of the person who makes the most in the company*/
+Select Fname, Mname, Lname, Ssn, Salary, Dnum
+From employee
+Where Salary = (Select Max(Salary) From employee);
+
+/*c. Joins*/
+/*Show the employee of each supervisor of the company*/
+Select CONCAT_WS(" ", e1.Fname, e1.Mname, e1.Lname) AS 'Supervisee', CONCAT_WS(" ", e2.Fname, e2.Mname, e2.Lname) As 'Supervisor'
+From employee e1, employee e2
+Where e2.Ssn=e1.Super_Ssn
+Order by e2.Lname ASC;
+
+/*Get the employee name, project name, project category, project number, and department number for those who work in software*/
+Select e.Fname, e.Mname, e.Lname, p.Pname, p.P_Category, w.Pnumber, p.Dno
+From employee e
+INNER JOIN project p, worked_on w
+Where p.P_Category = "Software" AND e.Dnum=p.Dno AND w.Pnumber=p.Pno AND e.Ssn=W.E_ssn;
+
+/*Get the employees' name, Ssn, total hours, and project number*/
+Select e.Fname, e.Mname, e.Lname, e.Ssn, w.Total_Hours, w.Pnumber
+From employee e, project p
+FULL OUTER JOIN worked_on w
+On w.Pnumber=p.Pno
+Where e.Dnum=p.Dno;
+
+/*d. Group by*/
+/*Show the project name, project number, project category, department number, and project location only if the department number is shown more than twice*/
+Select Pname, Pno, P_Category, Dno, Plocation
+From project 
+Group by Dno
+Having COUNT(Dno)>2
+Order by Pno ASC;
+
+/*e. Views*/
+/*Show a view of the names, Ssn's, project names, project numbers, and total hours of project employees*/
+Create View projectemployeesview AS
+Select e.Fname, e.Lname, e.Ssn, p.Pname, w.Pnumber, w.Total_Hours
+from employee e, worked_on w, project p
+Where e.Ssn=w.E_ssn AND p.Pno=w.Pnumber
+Order by p.Pno ASC;
+
+/*Show a view of supervisees and their supervisors for employees with supervisors*/
+Create View superviseeview AS
+Select CONCAT_WS(" ", e1.Fname, e1.Lname) AS 'Supervisee', CONCAT_WS(" ", e2.Fname, e2.Lname) AS 'Supervisor'
+from employee e1, employee e2
+Where e2.Ssn=e1.Super_ssn
+Order by e1.Lname ASC;
+
+/*Show a view of the names, Ssn's, salaries, department names, and department numbers for those who make $90,000 or more a year*/
+Create View highestpaidemployees AS
+Select e.Fname, e.Lname, e.Ssn, e.Salary, d.Dname, d.Dno
+from employee e, department d
+Where e.Salary>=90000 AND e.Dnum=d.Dno
+Order by Lname ASC;
+
+/*f. SQL Triggers*/
+/*Make a trigger for every time you add a new employee */
+CREATE DEFINER = CURRENT_USER TRIGGER `smartsolutions`.`employee_AFTER_INSERT` AFTER INSERT ON `employee` FOR EACH ROW
+BEGIN
+INSERT INTO worked_on VALUES(NEW.ssn,3,0);
+END
+
+/*Make a trigger after you make an insert for the worked on table*/
+CREATE DEFINER = CURRENT_USER TRIGGER `smartsolutions`.`worked_on_AFTER_INSERT` AFTER INSERT ON `worked_on` FOR EACH ROW
+BEGIN
+INSERT INTO project VALUES(New, 6, Hardware, 5, Glastonbury);
+END
+
+/*Make a trigger after you add someting new for the department table*/
+CREATE DEFINER = CURRENT_USER TRIGGER `smartsolutions`.`department_AFTER_INSERT` AFTER INSERT ON `department` FOR EACH ROW
+BEGIN
+INSERT INTO department_locations VALUES(Num, Location, Ssn, startdate, Status);
+END
